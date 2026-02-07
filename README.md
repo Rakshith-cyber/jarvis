@@ -1,135 +1,156 @@
-# J.A.R.V.I.S - Advanced AI Assistant
+# JARVIS AI - Your Advanced Personal Assistant
 
-**Just A Rather Very Intelligent System**
+## Project Overview
+- **Name**: Jarvis AI
+- **Goal**: A powerful web-based AI assistant that works 24/7 from anywhere without touching your PC or phone
+- **Creator**: Built for Rakshith by AI Developer
+- **Tech Stack**: Hono + TypeScript + Cloudflare Workers + D1 Database + OpenAI GPT-4
 
-A modern, web-based AI assistant that you can access from anywhere without touching your PC or phone. Built with Hono framework and deployed on Cloudflare Pages.
+## 🚀 Features
 
-## 🚀 Current Features
+### ✅ Currently Completed
+1. **AI Chat Interface** - Talk to Jarvis using text or voice
+2. **Voice Input/Output** - Browser-based speech recognition and synthesis
+3. **Command History** - All interactions saved to database
+4. **Automation System** - Schedule recurring tasks
+5. **Notes & Reminders** - Create and manage notes with reminders
+6. **Weather Integration** - Real-time weather information
+7. **Web Search** - DuckDuckGo search integration
+8. **Settings Management** - Configure OpenAI API key
+9. **Responsive UI** - Beautiful glass-morphism design
+10. **Database Storage** - Persistent data with Cloudflare D1
 
-### ✅ Completed Features
-1. **Voice Input** - Use Web Speech API for hands-free commands
-2. **Text-to-Speech** - Jarvis speaks responses back to you
-3. **AI Conversations** - Powered by OpenAI GPT-4o-mini for intelligent responses
-4. **Time & Date** - Get current time and date information
-5. **Weather Information** - Real-time weather data for any city
-6. **Web Search** - Search the web and get instant answers
-7. **Calculator** - Perform mathematical calculations
-8. **Command History** - Track and replay previous commands
-9. **Quick Actions** - One-click shortcuts for common tasks
-10. **Modern UI** - Beautiful, responsive interface with animations
+### 🎯 Main Capabilities
+- **Natural Language Processing**: Powered by OpenAI GPT-4o-mini
+- **Voice Control**: Full voice input and output support
+- **Task Automation**: Create scheduled tasks and automations
+- **Smart Reminders**: Set time-based reminders
+- **Weather Reports**: Get weather for any city
+- **Web Search**: Search the internet directly from chat
+- **24/7 Availability**: Access from anywhere, anytime
 
-### 📍 Functional Entry URIs
+## 📋 API Endpoints
 
-#### API Endpoints
-- `POST /api/chat` - AI conversation endpoint
-  - Body: `{ "message": "your message" }`
-  - Returns: `{ "reply": "AI response" }`
-
-- `GET /api/time` - Get current time and date
-  - Returns: `{ "time": "...", "date": "...", "timestamp": "..." }`
-
-- `GET /api/weather/:city` - Get weather for a city
-  - Returns: `{ "location": "...", "temperature": "...", "condition": "...", ... }`
-
-- `POST /api/search` - Web search
-  - Body: `{ "query": "search query" }`
-  - Returns: `{ "abstract": "...", "url": "...", "relatedTopics": [...] }`
-
-- `POST /api/calculate` - Calculator
-  - Body: `{ "expression": "15 * 234" }`
-  - Returns: `{ "result": 3510 }`
-
-- `POST /api/history` - Save command history
-  - Body: `{ "command": "...", "response": "..." }`
+### Chat & Commands
+- `POST /api/command` - Send command to Jarvis
+  - Body: `{ "command": "your command" }`
+  - Returns: `{ "response": "AI response", "status": "success" }`
 
 - `GET /api/history` - Get command history
   - Returns: `{ "history": [...] }`
 
-#### Web Interface
-- `GET /` - Main Jarvis interface
+- `DELETE /api/history` - Clear command history
 
-## 🔮 Features Not Yet Implemented
+### Automations
+- `POST /api/automations` - Create automation
+  - Body: `{ "name": "Task Name", "task_type": "daily_reminder", "schedule": "09:00", "config": {...} }`
 
-1. **Telegram Integration** - Send messages via Telegram bot
-2. **Email Automation** - Send and read emails
-3. **Calendar Management** - Create and manage calendar events
-4. **File Management** - Upload, download, and organize files
-5. **WhatsApp Integration** - Send WhatsApp messages
-6. **Task Automation** - Create custom automation rules
-7. **Smart Home Control** - Control IoT devices
-8. **Video Calls** - Initiate video meetings
-9. **Music Control** - Play music from various services
-10. **News Briefing** - Daily news summaries
-11. **Reminder System** - Set and manage reminders
-12. **Multi-language Support** - Support for multiple languages
+- `GET /api/automations` - List all automations
 
-## 🎯 Recommended Next Steps
+- `PATCH /api/automations/:id` - Toggle automation
+  - Body: `{ "enabled": true/false }`
 
-1. **Add API Key** - Configure your OpenAI API key in Cloudflare Pages secrets
-2. **Deploy to Production** - Deploy to Cloudflare Pages for global access
-3. **Telegram Integration** - Add Telegram bot functionality
-4. **Email Service** - Integrate with email API (SendGrid/Mailgun)
-5. **Calendar API** - Connect to Google Calendar or similar
-6. **Authentication** - Add user authentication for multi-user support
-7. **Mobile App** - Create mobile companion app
-8. **Voice Activation** - Add wake word detection ("Hey Jarvis")
+- `DELETE /api/automations/:id` - Delete automation
 
-## 📊 Data Architecture
+### Notes & Reminders
+- `POST /api/notes` - Create note
+  - Body: `{ "title": "Note", "content": "...", "reminder_time": "2024-01-01T10:00" }`
 
-### Data Models
-- **command_history** - Stores all user commands and responses
-  - `id` (INTEGER PRIMARY KEY)
-  - `command` (TEXT)
-  - `response` (TEXT)
-  - `timestamp` (DATETIME)
+- `GET /api/notes` - Get active notes
 
-- **automation_rules** - Stores custom automation rules (future feature)
-  - `id` (INTEGER PRIMARY KEY)
-  - `name` (TEXT)
-  - `trigger` (TEXT)
-  - `action` (TEXT)
-  - `enabled` (INTEGER)
-  - `created_at` (DATETIME)
+- `PATCH /api/notes/:id` - Mark note as complete
 
-- **user_preferences** - Stores user preferences
-  - `key` (TEXT PRIMARY KEY)
-  - `value` (TEXT)
-  - `updated_at` (DATETIME)
+- `DELETE /api/notes/:id` - Delete note
+
+### Utilities
+- `GET /api/weather/:city` - Get weather for city
+- `GET /api/search?q=query` - Web search
+- `GET /api/settings/:key` - Get setting
+- `POST /api/settings` - Save setting
+
+## 🗄️ Data Architecture
+
+### Database Models
+
+**Commands Table**
+```sql
+- id: INTEGER PRIMARY KEY
+- command: TEXT (user command)
+- response: TEXT (AI response)
+- status: TEXT (success/error)
+- created_at: DATETIME
+```
+
+**Automations Table**
+```sql
+- id: INTEGER PRIMARY KEY
+- name: TEXT (task name)
+- task_type: TEXT (type of automation)
+- schedule: TEXT (when to run)
+- config: TEXT (JSON configuration)
+- enabled: INTEGER (0/1)
+- last_run: DATETIME
+- created_at: DATETIME
+```
+
+**Notes Table**
+```sql
+- id: INTEGER PRIMARY KEY
+- title: TEXT
+- content: TEXT
+- reminder_time: DATETIME
+- completed: INTEGER (0/1)
+- created_at: DATETIME
+```
+
+**Settings Table**
+```sql
+- key: TEXT PRIMARY KEY
+- value: TEXT
+- updated_at: DATETIME
+```
 
 ### Storage Services
-- **Cloudflare D1** - SQLite database for command history and user data
-- **Cloudflare Pages** - Static hosting and edge functions
+- **Cloudflare D1**: SQLite database for all persistent data
+- **Edge Workers**: Running on Cloudflare's global network
+- **KV Storage**: (Future) For caching and sessions
 
-### Data Flow
-1. User sends command (voice or text)
-2. Frontend processes command and routes to appropriate API
-3. Backend API endpoints handle specific tasks or forward to OpenAI
-4. Response is returned and stored in command history
-5. Frontend displays response and optionally speaks it
-
-## 📖 User Guide
+## 🎮 User Guide
 
 ### Getting Started
-1. Open the Jarvis web interface
-2. Click the "Voice" button or type your command
-3. Jarvis will process your command and respond
+1. **Open Jarvis**: Visit the web app URL
+2. **Configure OpenAI**: Go to Settings tab and add your OpenAI API key
+3. **Start Chatting**: Type or use voice input to talk to Jarvis
 
 ### Voice Commands
-- **"What time is it?"** - Get current time and date
-- **"What is the weather in [city]?"** - Get weather information
-- **"Search for [topic]"** - Search the web
-- **"Calculate [expression]"** - Perform calculations
-- **"Exit"** - Say goodbye
+- Click "Voice Input" button and speak
+- Jarvis will transcribe and respond
+- Toggle "Voice Output" to hear responses
 
-### Using Quick Actions
-- Click any quick action button for instant commands
-- Time & Date, Web Search, Weather, Calculator
+### Example Commands
+- "What's the weather in London?"
+- "Search for latest AI news"
+- "Remind me to call mom"
+- "Create an automation for daily weather"
+- "Tell me a joke"
+- "What can you help me with?"
 
-### Settings
-- **Auto-speak responses** - Toggle checkbox to enable/disable voice responses
-- **Command History** - Click any previous command to run it again
+### Creating Automations
+1. Go to Automations tab
+2. Enter task name
+3. Select automation type
+4. Set schedule (e.g., "09:00" for 9 AM)
+5. Add configuration if needed
+6. Click Create
 
-## 🛠️ Development
+### Managing Notes
+1. Go to Notes tab
+2. Enter title and content
+3. Optionally set reminder time
+4. Click Create Note
+5. Mark complete or delete as needed
+
+## 🔧 Development
 
 ### Local Setup
 ```bash
@@ -143,64 +164,97 @@ npm run db:migrate:local
 npm run build
 
 # Start development server
+fuser -k 3000/tcp 2>/dev/null || true
 pm2 start ecosystem.config.cjs
 
-# Test the service
+# Check logs
+pm2 logs jarvis-ai --nostream
+
+# Test
 curl http://localhost:3000
 ```
 
-### Environment Variables
-Create `.dev.vars` file:
-```
-OPENAI_API_KEY=your_openai_api_key_here
+### Database Commands
+```bash
+# Apply migrations locally
+npm run db:migrate:local
+
+# Apply migrations to production
+npm run db:migrate:prod
+
+# Execute SQL locally
+wrangler d1 execute jarvis-production --local --command="SELECT * FROM commands LIMIT 10"
+
+# Execute SQL in production
+wrangler d1 execute jarvis-production --command="SELECT COUNT(*) FROM commands"
 ```
 
 ## 🚀 Deployment
 
-### Status
-- **Platform**: Cloudflare Pages
-- **Status**: ⏳ Ready for deployment
-- **Tech Stack**: Hono + TypeScript + Cloudflare D1 + OpenAI API
-- **Last Updated**: 2026-02-07
+### Requirements
+1. Cloudflare account
+2. OpenAI API key
+3. GitHub account (for version control)
+
+### Deploy to Cloudflare Pages
+```bash
+# Create D1 database
+wrangler d1 create jarvis-production
+
+# Update wrangler.jsonc with database_id
+
+# Apply migrations to production
+npm run db:migrate:prod
+
+# Build and deploy
+npm run deploy:prod
+```
 
 ### Production URLs
-- **Production**: (To be deployed)
-- **GitHub**: https://github.com/Rakshith-cyber/jarvis
+- Production: `https://jarvis-ai.pages.dev`
+- API: `https://jarvis-ai.pages.dev/api/*`
 
-### Deploy Steps
-1. Create D1 database: `npx wrangler d1 create jarvis-production`
-2. Update `wrangler.jsonc` with database ID
-3. Apply migrations: `npm run db:migrate:prod`
-4. Deploy: `npm run deploy`
-5. Set secret: `npx wrangler pages secret put OPENAI_API_KEY`
+## 🔒 Security
 
-## 🎨 Features Overview
+### API Keys
+- Store OpenAI API key in Settings (encrypted in database)
+- Never commit API keys to git
+- Use environment variables for sensitive data
 
-### AI Capabilities
-- Natural language understanding
-- Context-aware responses
-- Multi-turn conversations
-- Intelligent task routing
+### Database
+- All data stored securely in Cloudflare D1
+- Automatic backups by Cloudflare
+- Edge-optimized queries
 
-### Voice Features
-- Speech recognition (Web Speech API)
-- Text-to-speech synthesis
-- Hands-free operation
-- Voice command confirmation
+## 📊 Current Status
+- **Platform**: Cloudflare Pages
+- **Status**: ✅ Active
+- **Last Updated**: 2026-02-07
+- **Version**: 1.0.0
 
-### Automation
-- Command history tracking
-- Quick action shortcuts
-- Intelligent command routing
-- Future: Custom automation rules
+## 🎯 Future Enhancements
+1. **Email Integration** - Send emails via API
+2. **Calendar Sync** - Google Calendar integration
+3. **SMS Notifications** - Twilio integration
+4. **File Management** - Upload and manage files
+5. **Multi-user Support** - Team collaboration
+6. **Mobile App** - Native iOS/Android apps
+7. **Telegram Bot** - Telegram integration
+8. **Voice Calls** - Make phone calls through Jarvis
+9. **Home Automation** - Smart home device control
+10. **Custom Plugins** - Extensible plugin system
 
-## 📝 Notes
+## 🐛 Known Issues
+- Voice recognition requires Chrome/Edge browser
+- OpenAI API key required for AI features
+- Automation scheduling needs manual triggering (no cron yet)
 
-- Original Python version backed up in `original_python_version/`
-- Requires OpenAI API key for AI features
-- Voice features require Chrome, Edge, or Safari browser
-- Designed for global edge deployment on Cloudflare
+## 📝 License
+Created for personal use by Rakshith
+
+## 🤝 Support
+For issues or questions, create an issue on GitHub
 
 ---
 
-Built with ❤️ by Rakshith using Hono, TypeScript, and Cloudflare Pages
+**Jarvis is ready to assist you 24/7 from anywhere in the world! 🚀**

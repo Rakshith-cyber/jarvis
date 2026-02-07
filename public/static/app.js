@@ -1,308 +1,492 @@
-// ================= JARVIS WEB CLIENT =================
-
-let recognition = null;
+// Global state
+let voiceOutputEnabled = true;
 let isListening = false;
-let speechSynthesis = window.speechSynthesis;
 
-// Initialize Speech Recognition
-if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+// Initialize on load
+document.addEventListener('DOMContentLoaded', () => {
+    loadSettings();
+    loadHistory();
+    loadAutomations();
+    loadNotes();
+});
+
+// ============= TAB MANAGEMENT =============
+function showTab(tabName) {
+    // Hide all tabs
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.add('hidden');
+    });
+    
+    // Show selected tab
+    document.getElementById(`content-${tabName}`).classList.remove('hidden');
+    
+    // Update tab buttons
+    document.querySelectorAll('[id^="tab-"]').forEach(btn => {
+        btn.classList.remove('glow');
+    });
+    document.getElementById(`tab-${tabName}`).classList.add('glow');
+}
+
+// ============= VOICE INPUT/OUTPUT =============
+function startVoiceInput() {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        addMessage('system', 'Voice input is not supported in your browser. Please use Chrome or Edge.');
+        return;
+    }
+
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    recognition = new SpeechRecognition();
+    const recognition = new SpeechRecognition();
+    
+    recognition.lang = 'en-US';
     recognition.continuous = false;
     recognition.interimResults = false;
-    recognition.lang = 'en-US';
+
+    const voiceBtn = document.getElementById('voice-btn');
+    voiceBtn.innerHTML = '<i class="fas fa-microphone-slash mr-2"></i>Listening...';
+    voiceBtn.classList.add('bg-red-600');
+    isListening = true;
 
     recognition.onresult = (event) => {
         const transcript = event.results[0][0].transcript;
-        document.getElementById('commandInput').value = transcript;
+        document.getElementById('command-input').value = transcript;
         sendCommand();
     };
 
     recognition.onerror = (event) => {
-        console.error('Speech recognition error:', event.error);
-        updateStatus('Error: ' + event.error);
-        stopListening();
+        addMessage('system', `Voice recognition error: ${event.error}`);
+        resetVoiceButton();
     };
 
     recognition.onend = () => {
-        stopListening();
+        resetVoiceButton();
     };
+
+    recognition.start();
 }
 
-// Toggle voice input
-function toggleVoice() {
-    if (!recognition) {
-        alert('Speech recognition is not supported in your browser. Please use Chrome or Edge.');
-        return;
-    }
-
-    if (isListening) {
-        stopListening();
-    } else {
-        startListening();
-    }
-}
-
-function startListening() {
-    isListening = true;
-    document.getElementById('voiceBtn').classList.add('bg-red-700', 'jarvis-active');
-    document.getElementById('voiceText').textContent = 'Listening...';
-    document.getElementById('listeningIndicator').classList.remove('hidden');
-    
-    try {
-        recognition.start();
-        speak('Listening');
-    } catch (e) {
-        console.error('Recognition start error:', e);
-    }
-}
-
-function stopListening() {
+function resetVoiceButton() {
+    const voiceBtn = document.getElementById('voice-btn');
+    voiceBtn.innerHTML = '<i class="fas fa-microphone mr-2"></i>Voice Input';
+    voiceBtn.classList.remove('bg-red-600');
     isListening = false;
-    document.getElementById('voiceBtn').classList.remove('bg-red-700', 'jarvis-active');
-    document.getElementById('voiceText').textContent = 'Voice';
-    document.getElementById('listeningIndicator').classList.add('hidden');
-    
-    try {
-        recognition.stop();
-    } catch (e) {
-        // Already stopped
-    }
 }
 
-// Quick command buttons
-function quickCommand(command) {
-    document.getElementById('commandInput').value = command;
-    sendCommand();
+function toggleVoiceOutput() {
+    voiceOutputEnabled = !voiceOutputEnabled;
+    const btn = document.getElementById('voice-output-btn');
+    btn.innerHTML = voiceOutputEnabled 
+        ? '<i class="fas fa-volume-up mr-2"></i>Voice Output: ON'
+        : '<i class="fas fa-volume-mute mr-2"></i>Voice Output: OFF';
 }
 
-// Text-to-speech
 function speak(text) {
-    if (!document.getElementById('autoSpeak').checked) {
-        return;
+    if (!voiceOutputEnabled) return;
+    
+    if ('speechSynthesis' in window) {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 1.0;
+        utterance.pitch = 1.0;
+        utterance.volume = 1.0;
+        window.speechSynthesis.speak(utterance);
     }
-
-    // Cancel any ongoing speech
-    speechSynthesis.cancel();
-
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 0.9;
-    utterance.pitch = 1;
-    utterance.volume = 1;
-    speechSynthesis.speak(utterance);
 }
 
-// Update status
-function updateStatus(text) {
-    document.getElementById('status').innerHTML = `
-        <span class="inline-flex items-center space-x-2">
-            <span class="w-3 h-3 bg-blue-400 rounded-full animate-pulse"></span>
-            <span>${text}</span>
-        </span>
-    `;
+// ============= CHAT FUNCTIONS =============
+function addMessage(type, content) {
+    const chatContainer = document.getElementById('chat-container');
     
-    setTimeout(() => {
-        document.getElementById('status').innerHTML = `
-            <span class="inline-flex items-center space-x-2">
-                <span class="w-3 h-3 bg-green-400 rounded-full animate-pulse"></span>
-                <span>Online</span>
-            </span>
-        `;
-    }, 3000);
-}
-
-// Add message to chat
-function addMessage(text, isUser = false) {
-    const chatDisplay = document.getElementById('chatDisplay');
-    
-    // Clear welcome message
-    if (chatDisplay.children[0]?.classList.contains('text-center')) {
-        chatDisplay.innerHTML = '';
+    // Clear welcome message on first message
+    if (chatContainer.querySelector('.text-center')) {
+        chatContainer.innerHTML = '';
     }
 
     const messageDiv = document.createElement('div');
-    messageDiv.className = `command-bubble mb-4 ${isUser ? 'text-right' : 'text-left'}`;
+    messageDiv.className = `message mb-4 p-4 rounded-lg ${
+        type === 'user' 
+            ? 'bg-blue-600 ml-12' 
+            : type === 'jarvis'
+            ? 'bg-gray-700 mr-12'
+            : 'bg-yellow-900 border border-yellow-600'
+    }`;
+    
+    const icon = type === 'user' 
+        ? '<i class="fas fa-user mr-2"></i>' 
+        : type === 'jarvis'
+        ? '<i class="fas fa-brain mr-2"></i>'
+        : '<i class="fas fa-info-circle mr-2"></i>';
     
     messageDiv.innerHTML = `
-        <div class="inline-block max-w-3xl ${isUser ? 'bg-blue-600' : 'bg-gray-700'} p-4 rounded-lg shadow-lg">
-            <div class="flex items-start space-x-3">
-                ${!isUser ? '<i class="fas fa-robot text-2xl"></i>' : ''}
-                <div class="flex-1">
-                    <div class="font-bold mb-1">${isUser ? 'You' : 'Jarvis'}</div>
-                    <div class="text-sm">${text}</div>
-                    <div class="text-xs text-gray-400 mt-1">${new Date().toLocaleTimeString()}</div>
-                </div>
-                ${isUser ? '<i class="fas fa-user text-2xl"></i>' : ''}
+        <div class="flex items-start">
+            ${icon}
+            <div class="flex-1">
+                <strong>${type === 'user' ? 'You' : type === 'jarvis' ? 'Jarvis' : 'System'}:</strong>
+                <p class="mt-1">${content}</p>
             </div>
         </div>
     `;
-
-    chatDisplay.appendChild(messageDiv);
-    chatDisplay.scrollTop = chatDisplay.scrollHeight;
+    
+    chatContainer.appendChild(messageDiv);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
 }
 
-// Process command with intelligent routing
-async function processCommand(command) {
-    const lowerCommand = command.toLowerCase();
-
-    // Time/Date commands
-    if (lowerCommand.includes('time') || lowerCommand.includes('date')) {
-        try {
-            const response = await axios.get('/api/time');
-            const { time, date } = response.data;
-            const reply = `The current time is ${time} and today is ${date}.`;
-            addMessage(reply);
-            speak(reply);
-            saveToHistory(command, reply);
-            return;
-        } catch (error) {
-            console.error('Time API error:', error);
-        }
-    }
-
-    // Weather commands
-    if (lowerCommand.includes('weather')) {
-        const cityMatch = command.match(/weather (?:in |at |for )?([a-zA-Z\s]+)/i);
-        if (cityMatch) {
-            const city = cityMatch[1].trim();
-            try {
-                updateStatus('Fetching weather data...');
-                const response = await axios.get(`/api/weather/${encodeURIComponent(city)}`);
-                const { temperature, condition, humidity, windSpeed } = response.data;
-                const reply = `The weather in ${city} is ${condition} with a temperature of ${temperature}°C, ${humidity}% humidity, and wind speed of ${windSpeed} km/h.`;
-                addMessage(reply);
-                speak(reply);
-                saveToHistory(command, reply);
-                return;
-            } catch (error) {
-                const reply = 'Sorry, I could not fetch the weather data.';
-                addMessage(reply);
-                speak(reply);
-                return;
-            }
-        }
-    }
-
-    // Calculator commands
-    if (lowerCommand.includes('calculate') || lowerCommand.includes('compute') || /[\d+\-*/]/.test(command)) {
-        const expressionMatch = command.match(/calculate\s+(.+)|compute\s+(.+)|^([\d+\-*/()\s.]+)$/i);
-        if (expressionMatch) {
-            const expression = (expressionMatch[1] || expressionMatch[2] || expressionMatch[3]).trim();
-            try {
-                const response = await axios.post('/api/calculate', { expression });
-                const reply = `The result is ${response.data.result}`;
-                addMessage(reply);
-                speak(reply);
-                saveToHistory(command, reply);
-                return;
-            } catch (error) {
-                const reply = 'I could not calculate that expression.';
-                addMessage(reply);
-                speak(reply);
-                return;
-            }
-        }
-    }
-
-    // Search commands
-    if (lowerCommand.includes('search for') || lowerCommand.includes('look up') || lowerCommand.includes('find information')) {
-        const searchMatch = command.match(/search (?:for |about )?(.+)|look up (.+)|find information (?:on |about )?(.+)/i);
-        if (searchMatch) {
-            const query = (searchMatch[1] || searchMatch[2] || searchMatch[3]).trim();
-            try {
-                updateStatus('Searching the web...');
-                const response = await axios.post('/api/search', { query });
-                const { abstract, url, relatedTopics } = response.data;
-                
-                let reply = abstract || 'No information found.';
-                if (url) {
-                    reply += ` You can read more at ${url}`;
-                }
-                
-                addMessage(reply);
-                speak(abstract || 'No information found');
-                saveToHistory(command, reply);
-                return;
-            } catch (error) {
-                console.error('Search error:', error);
-            }
-        }
-    }
-
-    // Exit commands
-    if (lowerCommand.includes('exit') || lowerCommand.includes('quit') || lowerCommand.includes('stop jarvis')) {
-        const reply = 'Goodbye Rakshith! I am always here when you need me.';
-        addMessage(reply);
-        speak(reply);
-        return;
-    }
-
-    // Default: Use AI
-    try {
-        updateStatus('Thinking...');
-        const response = await axios.post('/api/chat', { message: command });
-        const reply = response.data.reply;
-        addMessage(reply);
-        speak(reply);
-        saveToHistory(command, reply);
-    } catch (error) {
-        console.error('AI Error:', error);
-        const errorMsg = 'I apologize, but I encountered an error processing your request. Please make sure the OpenAI API key is configured.';
-        addMessage(errorMsg);
-        speak(errorMsg);
-    }
-}
-
-// Send command
 async function sendCommand() {
-    const input = document.getElementById('commandInput');
+    const input = document.getElementById('command-input');
     const command = input.value.trim();
-
+    
     if (!command) return;
-
-    addMessage(command, true);
+    
     input.value = '';
-
-    await processCommand(command);
-}
-
-// Save to history
-async function saveToHistory(command, response) {
+    addMessage('user', command);
+    
     try {
-        await axios.post('/api/history', { command, response });
-        loadHistory();
+        // Check for special commands
+        if (command.toLowerCase().includes('weather')) {
+            const cityMatch = command.match(/in ([a-zA-Z\s]+)/);
+            const city = cityMatch ? cityMatch[1].trim() : 'London';
+            await getWeather(city);
+            return;
+        }
+        
+        if (command.toLowerCase().startsWith('search ')) {
+            const query = command.substring(7);
+            await webSearch(query);
+            return;
+        }
+        
+        if (command.toLowerCase().includes('remind me')) {
+            await quickReminder(command);
+            return;
+        }
+
+        // Regular AI command
+        const response = await axios.post('/api/command', { command });
+        const reply = response.data.response;
+        
+        addMessage('jarvis', reply);
+        speak(reply);
+        
     } catch (error) {
-        console.error('History save error:', error);
+        const errorMsg = error.response?.data?.error || error.message || 'Unknown error';
+        addMessage('system', `Error: ${errorMsg}`);
     }
 }
 
-// Load history
 async function loadHistory() {
     try {
         const response = await axios.get('/api/history');
-        const history = response.data.history || [];
-        
-        const historyDisplay = document.getElementById('historyDisplay');
-        
-        if (history.length === 0) {
-            historyDisplay.innerHTML = '<p class="text-gray-400 text-sm">No commands yet</p>';
-            return;
-        }
-
-        historyDisplay.innerHTML = history.slice(0, 10).map(item => `
-            <div class="text-sm bg-gray-700 p-2 rounded hover:bg-gray-600 cursor-pointer"
-                 onclick="document.getElementById('commandInput').value='${item.command.replace(/'/g, "\\'")}'; sendCommand();">
-                <i class="fas fa-history mr-2"></i>
-                ${item.command}
-            </div>
-        `).join('');
+        // History loaded but not displayed to keep chat clean
     } catch (error) {
-        console.error('History load error:', error);
+        console.error('Failed to load history:', error);
     }
 }
 
-// Initialize on page load
-document.addEventListener('DOMContentLoaded', () => {
-    loadHistory();
-    speak('Hello Rakshith. Jarvis online and ready.');
-});
+async function clearHistory() {
+    if (!confirm('Clear all chat history?')) return;
+    
+    try {
+        await axios.delete('/api/history');
+        document.getElementById('chat-container').innerHTML = `
+            <div class="text-center text-gray-400 py-8">
+                <i class="fas fa-brain text-4xl mb-2"></i>
+                <p>Chat history cleared. How can I help you?</p>
+            </div>
+        `;
+        addMessage('system', 'Chat history cleared');
+    } catch (error) {
+        addMessage('system', 'Failed to clear history');
+    }
+}
+
+// ============= WEATHER & SEARCH =============
+async function getWeather(city) {
+    try {
+        const response = await axios.get(`/api/weather/${city}`);
+        const weather = response.data.weather;
+        
+        if (weather && weather.current_condition && weather.current_condition[0]) {
+            const current = weather.current_condition[0];
+            const desc = current.weatherDesc[0].value;
+            const temp = current.temp_C;
+            const feelsLike = current.FeelsLikeC;
+            
+            const message = `Weather in ${city}: ${desc}, ${temp}°C (feels like ${feelsLike}°C)`;
+            addMessage('jarvis', message);
+            speak(message);
+        } else {
+            addMessage('system', 'Could not fetch weather data');
+        }
+    } catch (error) {
+        addMessage('system', 'Weather service unavailable');
+    }
+}
+
+async function webSearch(query) {
+    try {
+        const response = await axios.get(`/api/search?q=${encodeURIComponent(query)}`);
+        const results = response.data.results;
+        
+        if (results && results.AbstractText) {
+            addMessage('jarvis', results.AbstractText);
+            speak(results.AbstractText);
+        } else {
+            addMessage('jarvis', `I searched for "${query}". Check DuckDuckGo for full results.`);
+        }
+    } catch (error) {
+        addMessage('system', 'Search service unavailable');
+    }
+}
+
+// ============= AUTOMATIONS =============
+async function loadAutomations() {
+    try {
+        const response = await axios.get('/api/automations');
+        const automations = response.data.automations || [];
+        
+        const container = document.getElementById('automations-list');
+        
+        if (automations.length === 0) {
+            container.innerHTML = '<div class="text-center text-gray-400 py-4">No automations yet</div>';
+            return;
+        }
+        
+        container.innerHTML = automations.map(auto => `
+            <div class="bg-gray-800 rounded-lg p-4 flex items-center justify-between">
+                <div class="flex-1">
+                    <h4 class="font-semibold">${auto.name}</h4>
+                    <p class="text-sm text-gray-400">${auto.task_type} - ${auto.schedule || 'No schedule'}</p>
+                </div>
+                <div class="flex space-x-2">
+                    <button 
+                        onclick="toggleAutomation(${auto.id}, ${auto.enabled})"
+                        class="px-4 py-2 rounded ${auto.enabled ? 'bg-green-600' : 'bg-gray-600'}"
+                    >
+                        ${auto.enabled ? 'Enabled' : 'Disabled'}
+                    </button>
+                    <button 
+                        onclick="deleteAutomation(${auto.id})"
+                        class="px-4 py-2 bg-red-600 rounded"
+                    >
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+        
+    } catch (error) {
+        console.error('Failed to load automations:', error);
+    }
+}
+
+async function createAutomation() {
+    const name = document.getElementById('auto-name').value.trim();
+    const task_type = document.getElementById('auto-type').value;
+    const schedule = document.getElementById('auto-schedule').value.trim();
+    const config = document.getElementById('auto-config').value.trim();
+    
+    if (!name) {
+        alert('Please enter a task name');
+        return;
+    }
+    
+    try {
+        await axios.post('/api/automations', {
+            name,
+            task_type,
+            schedule,
+            config: config || '{}'
+        });
+        
+        // Clear form
+        document.getElementById('auto-name').value = '';
+        document.getElementById('auto-schedule').value = '';
+        document.getElementById('auto-config').value = '';
+        
+        loadAutomations();
+        addMessage('system', `Automation "${name}" created successfully`);
+    } catch (error) {
+        alert('Failed to create automation');
+    }
+}
+
+async function toggleAutomation(id, currentState) {
+    try {
+        await axios.patch(`/api/automations/${id}`, {
+            enabled: !currentState
+        });
+        loadAutomations();
+    } catch (error) {
+        alert('Failed to toggle automation');
+    }
+}
+
+async function deleteAutomation(id) {
+    if (!confirm('Delete this automation?')) return;
+    
+    try {
+        await axios.delete(`/api/automations/${id}`);
+        loadAutomations();
+        addMessage('system', 'Automation deleted');
+    } catch (error) {
+        alert('Failed to delete automation');
+    }
+}
+
+// ============= NOTES =============
+async function loadNotes() {
+    try {
+        const response = await axios.get('/api/notes');
+        const notes = response.data.notes || [];
+        
+        const container = document.getElementById('notes-list');
+        
+        if (notes.length === 0) {
+            container.innerHTML = '<div class="text-center text-gray-400 py-4">No notes yet</div>';
+            return;
+        }
+        
+        container.innerHTML = notes.map(note => {
+            const reminderText = note.reminder_time 
+                ? new Date(note.reminder_time).toLocaleString()
+                : 'No reminder';
+            
+            return `
+                <div class="bg-gray-800 rounded-lg p-4">
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1">
+                            <h4 class="font-semibold">${note.title}</h4>
+                            <p class="text-sm text-gray-300 mt-1">${note.content || ''}</p>
+                            <p class="text-xs text-gray-500 mt-2">
+                                <i class="fas fa-clock mr-1"></i>${reminderText}
+                            </p>
+                        </div>
+                        <div class="flex space-x-2 ml-4">
+                            <button 
+                                onclick="completeNote(${note.id})"
+                                class="px-3 py-1 bg-green-600 rounded text-sm"
+                            >
+                                <i class="fas fa-check"></i>
+                            </button>
+                            <button 
+                                onclick="deleteNote(${note.id})"
+                                class="px-3 py-1 bg-red-600 rounded text-sm"
+                            >
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+    } catch (error) {
+        console.error('Failed to load notes:', error);
+    }
+}
+
+async function createNote() {
+    const title = document.getElementById('note-title').value.trim();
+    const content = document.getElementById('note-content').value.trim();
+    const reminder_time = document.getElementById('note-reminder').value;
+    
+    if (!title) {
+        alert('Please enter a title');
+        return;
+    }
+    
+    try {
+        await axios.post('/api/notes', {
+            title,
+            content,
+            reminder_time: reminder_time || null
+        });
+        
+        // Clear form
+        document.getElementById('note-title').value = '';
+        document.getElementById('note-content').value = '';
+        document.getElementById('note-reminder').value = '';
+        
+        loadNotes();
+        addMessage('system', `Note "${title}" created successfully`);
+    } catch (error) {
+        alert('Failed to create note');
+    }
+}
+
+async function completeNote(id) {
+    try {
+        await axios.patch(`/api/notes/${id}`);
+        loadNotes();
+        addMessage('system', 'Note marked as complete');
+    } catch (error) {
+        alert('Failed to complete note');
+    }
+}
+
+async function deleteNote(id) {
+    if (!confirm('Delete this note?')) return;
+    
+    try {
+        await axios.delete(`/api/notes/${id}`);
+        loadNotes();
+        addMessage('system', 'Note deleted');
+    } catch (error) {
+        alert('Failed to delete note');
+    }
+}
+
+async function quickReminder(command) {
+    // Simple parsing for "remind me to X"
+    const reminderText = command.replace(/remind me to/i, '').trim();
+    
+    if (!reminderText) {
+        addMessage('system', 'Please specify what to remind you about');
+        return;
+    }
+    
+    try {
+        await axios.post('/api/notes', {
+            title: reminderText,
+            content: '',
+            reminder_time: null
+        });
+        
+        addMessage('jarvis', `I'll remind you: ${reminderText}`);
+        speak(`Reminder created: ${reminderText}`);
+        loadNotes();
+    } catch (error) {
+        addMessage('system', 'Failed to create reminder');
+    }
+}
+
+// ============= SETTINGS =============
+async function loadSettings() {
+    try {
+        const response = await axios.get('/api/settings/openai_key');
+        if (response.data.value) {
+            document.getElementById('openai-key').value = response.data.value;
+        }
+    } catch (error) {
+        console.error('Failed to load settings:', error);
+    }
+}
+
+async function saveSettings() {
+    const openaiKey = document.getElementById('openai-key').value.trim();
+    
+    if (!openaiKey) {
+        alert('Please enter your OpenAI API key');
+        return;
+    }
+    
+    try {
+        await axios.post('/api/settings', {
+            key: 'openai_key',
+            value: openaiKey
+        });
+        
+        alert('Settings saved successfully!');
+        addMessage('system', 'OpenAI API key configured');
+    } catch (error) {
+        alert('Failed to save settings');
+    }
+}

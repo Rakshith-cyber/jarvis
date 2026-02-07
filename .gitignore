@@ -1,33 +1,39 @@
 # Dependencies
 node_modules/
 
-# Runtime data
-pids
-*.pid
-*.seed
-*.pid.lock
+# Build output
+dist/
+.wrangler/
 
-# Compiled binary addons
-build
-dist
-.wrangler
-
-# dotenv environment variables file
-.env
+# Environment variables
 .dev.vars
+.env
+.env.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+pids/
+*.pid
 
 # PM2
 .pm2/
-pids/
-logs/
-*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
 
 # Backup files
 *.backup
 *.bak
 *.tar.gz
-*.zip
 
-# Database
-*.db
-*.sqlite
+# Original Python version (keep for reference)
+!original_python_version/

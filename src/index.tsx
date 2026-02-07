@@ -109,8 +109,8 @@ app.post('/api/command', async (c) => {
     const response = await aiBrain(command, openaiKey)
 
     // Save to history
-    await DB.prepare('INSERT INTO commands (command, response, status) VALUES (?, ?, ?)')
-      .bind(command, response, 'success')
+    await DB.prepare('INSERT INTO command_history (command, response) VALUES (?, ?)')
+      .bind(command, response)
       .run()
 
     return c.json({ response, status: 'success' })
@@ -124,12 +124,13 @@ app.get('/api/history', async (c) => {
   const { DB } = c.env
 
   try {
-    const { results } = await DB.prepare('SELECT * FROM commands ORDER BY created_at DESC LIMIT 50')
+    const { results } = await DB.prepare('SELECT * FROM command_history ORDER BY timestamp DESC LIMIT 50')
       .all()
 
-    return c.json({ history: results })
+    return c.json({ history: results || [] })
   } catch (error) {
-    return c.json({ error: String(error) }, 500)
+    console.error('History Error:', error)
+    return c.json({ history: [] })
   }
 })
 
@@ -138,7 +139,7 @@ app.delete('/api/history', async (c) => {
   const { DB } = c.env
 
   try {
-    await DB.prepare('DELETE FROM commands').run()
+    await DB.prepare('DELETE FROM command_history').run()
     return c.json({ success: true })
   } catch (error) {
     return c.json({ error: String(error) }, 500)
