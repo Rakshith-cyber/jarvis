@@ -3,6 +3,8 @@ import React, { useState } from 'react';
 import SystemDashboard from './components/SystemDashboard';
 import ChatInterface from './components/ChatInterface';
 import SettingsInterface from './components/SettingsInterface';
+import TasksInterface from './components/TasksInterface';
+import NotesInterface from './components/NotesInterface';
 import { useJarvis } from './hooks/useJarvis';
 import { MessageSquare, Zap, StickyNote, Settings as SettingsIcon } from 'lucide-react';
 
@@ -30,8 +32,8 @@ const App = () => {
             setMessages={setMessages}
           />
         )}
-        {activeTab === 'tasks' && <div className="text-center py-20 text-gray-500 uppercase tracking-widest text-xs">Task Protocols Standby</div>}
-        {activeTab === 'notes' && <div className="text-center py-20 text-gray-500 uppercase tracking-widest text-xs">Encrypted Archives Standby</div>}
+        {activeTab === 'tasks' && <TasksInterface />}
+        {activeTab === 'notes' && <NotesInterface />}
         {activeTab === 'settings' && <SettingsInterface />}
       </main>
     </div>

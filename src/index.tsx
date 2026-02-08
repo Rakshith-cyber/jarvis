@@ -26,7 +26,6 @@ async function aiBrain(command: string, db: D1Database): Promise<string> {
 
   const systemPrompt = "You are Jarvis, a highly advanced AI assistant. Be concise, helpful, and slightly formal.";
 
-  // AI Provider Logic (Simplified for brevity)
   if (openaiKey) {
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -71,24 +70,52 @@ app.delete('/api/history', async (c) => {
   return c.json({ success: true })
 })
 
-// ============= CRON TRIGGER =============
+// Automations
+app.get('/api/automations', async (c) => {
+  const { results } = await c.env.DB.prepare('SELECT * FROM automations ORDER BY created_at DESC').all()
+  return c.json({ automations: results || [] })
+})
+
+app.post('/api/automations', async (c) => {
+  const { name, task_type, schedule } = await c.req.json()
+  await c.env.DB.prepare('INSERT INTO automations (name, task_type, schedule, enabled) VALUES (?, ?, ?, 1)').bind(name, task_type, schedule).run()
+  return c.json({ success: true })
+})
+
+app.delete('/api/automations/:id', async (c) => {
+  await c.env.DB.prepare('DELETE FROM automations WHERE id = ?').bind(c.req.param('id')).run()
+  return c.json({ success: true })
+})
+
+// Notes
+app.get('/api/notes', async (c) => {
+  const { results } = await c.env.DB.prepare('SELECT * FROM notes WHERE completed = 0 ORDER BY created_at DESC').all()
+  return c.json({ notes: results || [] })
+})
+
+app.post('/api/notes', async (c) => {
+  const { title, content } = await c.req.json()
+  await c.env.DB.prepare('INSERT INTO notes (title, content, completed) VALUES (?, ?, 0)').bind(title, content).run()
+  return c.json({ success: true })
+})
+
+app.delete('/api/notes/:id', async (c) => {
+  await c.env.DB.prepare('DELETE FROM notes WHERE id = ?').bind(c.req.param('id')).run()
+  return c.json({ success: true })
+})
+
 export default {
   fetch: app.fetch,
   async scheduled(event: any, env: Bindings, ctx: any) {
     const now = new Date();
     const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-    
     const { results } = await env.DB.prepare('SELECT * FROM automations WHERE schedule = ? AND enabled = 1').bind(timeStr).all();
-    
     for (const auto of (results || [])) {
-      console.log(`Running automation: ${auto.name}`);
-      // Here you would trigger the AI brain or send a notification
       await env.DB.prepare('UPDATE automations SET last_run = CURRENT_TIMESTAMP WHERE id = ?').bind(auto.id).run();
     }
   }
 }
 
-// Serve the main HTML (Vite will handle the React build)
 app.get('*', (c) => {
   return c.html(`
     <!DOCTYPE html>
@@ -114,6 +141,9 @@ app.get('*', (c) => {
             .waveform.active { opacity: 1; }
             .bar { width: 3px; height: 5px; background: #3b82f6; border-radius: 10px; animation: wave 1s infinite; }
             @keyframes wave { 0%, 100% { height: 5px; } 50% { height: 20px; } }
+            .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+            .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+            .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
         </style>
     </head>
     <body>
