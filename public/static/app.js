@@ -5,11 +5,15 @@ let recognition;
 document.addEventListener('DOMContentLoaded', () => {
     initWakeWord();
     loadSettings();
+    loadHistory();
+    loadAutomations();
+    loadNotes();
 });
+
+// ============= CORE CHAT & VOICE =============
 
 function initWakeWord() {
     if (!('webkitSpeechRecognition' in window)) return;
-
     recognition = new webkitSpeechRecognition();
     recognition.continuous = true;
     recognition.interimResults = true;
@@ -25,7 +29,6 @@ function initWakeWord() {
         } else if (transcript.includes('stop jarvis') && isJarvisActive) {
             stopJarvis();
         } else if (isJarvisActive) {
-            // If active, look for the final result to send as command
             const last = event.results[event.results.length - 1];
             if (last.isFinal) {
                 const cmd = last[0].transcript.trim();
@@ -36,7 +39,6 @@ function initWakeWord() {
             }
         }
     };
-
     recognition.start();
 }
 
@@ -50,18 +52,17 @@ function startJarvis() {
 function stopJarvis() {
     isJarvisActive = false;
     updateUIState('idle');
-    document.getElementById('status-text').innerText = "Say 'Jarvis' to start";
+    document.getElementById('status-text').innerText = "System Standby";
     speak("Going to sleep.");
 }
 
 function updateUIState(state) {
     const logoUser = document.getElementById('logo-user');
     const logoAi = document.getElementById('logo-ai');
-
     if (state === 'speaking') {
         logoUser.classList.add('active');
         logoAi.classList.remove('active');
-        logoAi.style.opacity = "0.3";
+        logoAi.style.opacity = "0.2";
     } else if (state === 'replying') {
         logoUser.classList.remove('active');
         logoAi.classList.add('active');
@@ -101,8 +102,13 @@ async function sendCommand() {
 function addMessage(type, content) {
     const container = document.getElementById('chat-container');
     const div = document.createElement('div');
-    div.className = `mb-2 p-2 rounded ${type === 'user' ? 'bg-blue-900 ml-8' : 'bg-gray-700 mr-8'}`;
-    div.innerHTML = `<strong>${type.toUpperCase()}:</strong> ${content}`;
+    const isUser = type === 'user';
+    div.className = `flex ${isUser ? 'justify-end' : 'justify-start'}`;
+    div.innerHTML = `
+        <div class="max-w-[80%] p-4 rounded-2xl ${isUser ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-white/10 text-gray-200 rounded-tl-none'}">
+            <p class="text-sm">${content}</p>
+        </div>
+    `;
     container.appendChild(div);
     container.scrollTop = container.scrollHeight;
 }
@@ -112,6 +118,69 @@ function speak(text) {
     const utterance = new SpeechSynthesisUtterance(text);
     window.speechSynthesis.speak(utterance);
 }
+
+// ============= DATA LOADING =============
+
+async function loadHistory() {
+    try {
+        const res = await axios.get('/api/history');
+        const history = res.data.history.reverse();
+        history.forEach(item => {
+            addMessage('user', item.command);
+            addMessage('jarvis', item.response);
+        });
+    } catch (e) {}
+}
+
+async function loadAutomations() {
+    try {
+        const res = await axios.get('/api/automations');
+        const list = document.getElementById('automations-list');
+        list.innerHTML = res.data.automations.map(a => `
+            <div class="p-4 glass rounded-xl flex justify-between items-center">
+                <div>
+                    <h4 class="font-bold">${a.name}</h4>
+                    <p class="text-xs text-gray-400">${a.task_type} @ ${a.schedule}</p>
+                </div>
+                <div class="w-10 h-5 bg-blue-600 rounded-full relative cursor-pointer">
+                    <div class="absolute right-1 top-1 bottom-1 w-3 bg-white rounded-full"></div>
+                </div>
+            </div>
+        `).join('') || '<p class="text-gray-500 text-center py-4">No active automations</p>';
+    } catch (e) {}
+}
+
+async function createAutomation() {
+    const name = document.getElementById('auto-name').value;
+    const task_type = document.getElementById('auto-type').value;
+    const schedule = document.getElementById('auto-time').value;
+    if (!name || !schedule) return;
+    await axios.post('/api/automations', { name, task_type, schedule });
+    loadAutomations();
+}
+
+async function loadNotes() {
+    try {
+        const res = await axios.get('/api/notes');
+        const list = document.getElementById('notes-list');
+        list.innerHTML = res.data.notes.map(n => `
+            <div class="p-4 glass rounded-xl border-l-4 border-purple-500">
+                <h4 class="font-bold mb-1">${n.title}</h4>
+                <p class="text-sm text-gray-400">${n.content}</p>
+            </div>
+        `).join('') || '<p class="text-gray-500 col-span-2 text-center py-4">No notes found</p>';
+    } catch (e) {}
+}
+
+async function createNote() {
+    const title = document.getElementById('note-title').value;
+    const content = document.getElementById('note-content').value;
+    if (!title) return;
+    await axios.post('/api/notes', { title, content });
+    loadNotes();
+}
+
+// ============= SETTINGS & UI =============
 
 async function loadSettings() {
     const g = await axios.get('/api/settings/gemini_key');
@@ -125,10 +194,12 @@ async function saveAllSettings() {
     const o = document.getElementById('openai-key').value;
     await axios.post('/api/settings', { key: 'gemini_key', value: g });
     await axios.post('/api/settings', { key: 'openai_key', value: o });
-    alert("Settings saved!");
+    alert("System keys updated successfully.");
 }
 
 function showTab(tab) {
     document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.getElementById(`content-${tab}`).classList.remove('hidden');
+    document.getElementById(`btn-${tab}`).classList.add('active');
 }
