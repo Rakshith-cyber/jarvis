@@ -1,10 +1,14 @@
 /** @jsxImportSource react */
 import React, { useState } from 'react';
 import SystemDashboard from './components/SystemDashboard';
+import ChatInterface from './components/ChatInterface';
+import SettingsInterface from './components/SettingsInterface';
+import { useJarvis } from './hooks/useJarvis';
 import { MessageSquare, Zap, StickyNote, Settings as SettingsIcon } from 'lucide-react';
 
 const App = () => {
   const [activeTab, setActiveTab] = useState('chat');
+  const { messages, sendCommand, isProcessing, setMessages } = useJarvis();
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-6xl">
@@ -17,11 +21,18 @@ const App = () => {
         <TabButton id="settings" active={activeTab} onClick={setActiveTab} icon={<SettingsIcon size={16} />} label="Core" />
       </nav>
 
-      <main className="glass rounded-3xl p-6 shadow-2xl border-white/5">
-        {activeTab === 'chat' && <div className="text-center py-20 text-gray-500 uppercase tracking-widest text-xs">Chat Interface Initializing...</div>}
+      <main className="glass rounded-3xl p-6 shadow-2xl border-white/5 min-h-[400px]">
+        {activeTab === 'chat' && (
+          <ChatInterface 
+            messages={messages} 
+            onSend={sendCommand} 
+            isProcessing={isProcessing} 
+            setMessages={setMessages}
+          />
+        )}
         {activeTab === 'tasks' && <div className="text-center py-20 text-gray-500 uppercase tracking-widest text-xs">Task Protocols Standby</div>}
         {activeTab === 'notes' && <div className="text-center py-20 text-gray-500 uppercase tracking-widest text-xs">Encrypted Archives Standby</div>}
-        {activeTab === 'settings' && <div className="text-center py-20 text-gray-500 uppercase tracking-widest text-xs">Core Configuration Standby</div>}
+        {activeTab === 'settings' && <SettingsInterface />}
       </main>
     </div>
   );
@@ -31,7 +42,7 @@ const TabButton = ({ id, active, onClick, icon, label }: any) => (
   <button
     onClick={() => onClick(id)}
     className={`px-6 py-2.5 rounded-xl glass text-xs font-bold uppercase tracking-widest transition-all flex items-center gap-2 ${
-      active === id ? 'bg-blue-500/15 border-blue-500/40 text-blue-400' : ''
+      active === id ? 'bg-blue-500/15 border-blue-500/40 text-blue-400' : 'text-gray-500 hover:text-gray-300'
     }`}
   >
     {icon} {label}
