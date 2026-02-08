@@ -1,6 +1,6 @@
-"use client";
-
+/** @jsxImportSource react */
 import React, { useState, useEffect } from 'react';
+import { Mic, BrainCircuit } from 'lucide-react';
 
 const SystemDashboard = () => {
   const [stats, setStats] = useState({ cpu: 12, mem: 4.2, net: 84, uptime: '00:00:00' });
@@ -43,8 +43,12 @@ const SystemDashboard = () => {
 
       <div className="lg:col-span-2 text-center">
         <div className="logo-container mb-4">
-          <div id="logo-user" className="logo-base logo-user"><i className="lucide-mic w-10 h-10 text-white"></i></div>
-          <div id="logo-ai" className="logo-base logo-ai active"><i className="lucide-brain-circuit w-10 h-10 text-white"></i></div>
+          <div id="logo-user" className="logo-base logo-user flex items-center justify-center">
+            <Mic className="w-10 h-10 text-white" />
+          </div>
+          <div id="logo-ai" className="logo-base logo-ai active flex items-center justify-center">
+            <BrainCircuit className="w-10 h-10 text-white" />
+          </div>
         </div>
         <h1 className="text-4xl font-black tracking-tighter bg-gradient-to-b from-white to-gray-500 bg-clip-text text-transparent">JARVIS</h1>
         <div id="waveform" className="waveform mt-2">

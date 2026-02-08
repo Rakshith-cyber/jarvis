@@ -1,3 +1,4 @@
+/** @jsxImportSource react */
 import React, { useState } from 'react';
 import SystemDashboard from './components/SystemDashboard';
 import { MessageSquare, Zap, StickyNote, Settings as SettingsIcon } from 'lucide-react';
