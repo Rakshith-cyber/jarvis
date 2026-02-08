@@ -19,20 +19,12 @@ async function aiBrain(command: string, db: D1Database): Promise<string> {
   const lowerCmd = command.toLowerCase();
   const systemPrompt = "You are Jarvis, a highly advanced AI assistant. Be concise, helpful, and slightly formal.";
 
-  // 1. Weather Logic
   if (lowerCmd.includes('weather in')) {
     const city = lowerCmd.split('weather in')[1].trim().replace(/[?!.]/g, '');
     const res = await fetch(`https://wttr.in/${encodeURIComponent(city)}?format=3`);
     return res.ok ? `Current weather: ${(await res.text()).trim()}` : "Weather service unavailable.";
   }
 
-  // 2. Search Logic (Mock/Simple)
-  if (lowerCmd.startsWith('search for') || lowerCmd.startsWith('search')) {
-    const query = lowerCmd.replace(/search (for )?/, '').trim();
-    return `I've initiated a search for "${query}". Based on my current archives, this relates to advanced technological developments. (Web search integration active)`;
-  }
-
-  // 3. OpenAI Provider
   if (openaiKey) {
     try {
       const res = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -47,12 +39,9 @@ async function aiBrain(command: string, db: D1Database): Promise<string> {
         const data = await res.json() as any;
         return data.choices[0].message.content;
       }
-    } catch (e) {
-      console.error("OpenAI Error:", e);
-    }
+    } catch (e) {}
   }
 
-  // 4. Gemini Provider (Fallback)
   if (geminiKey) {
     try {
       const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`, {
@@ -66,12 +55,10 @@ async function aiBrain(command: string, db: D1Database): Promise<string> {
         const data = await res.json() as any;
         return data.candidates[0].content.parts[0].text;
       }
-    } catch (e) {
-      console.error("Gemini Error:", e);
-    }
+    } catch (e) {}
   }
 
-  return "I'm having trouble connecting to my neural networks. Please verify your API keys in the Core settings.";
+  return "Neural link offline. Please verify API keys.";
 }
 
 // ============= API ROUTES =============
@@ -140,8 +127,21 @@ export default {
   async scheduled(event: any, env: Bindings, ctx: any) {
     const now = new Date();
     const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+    
     const { results } = await env.DB.prepare('SELECT * FROM automations WHERE schedule = ? AND enabled = 1').bind(timeStr).all();
+    
     for (const auto of (results || [])) {
+      let response = "Protocol executed.";
+      
+      if (auto.task_type === 'weather_check') {
+        response = await aiBrain("What is the weather in London?", env.DB);
+      } else if (auto.task_type === 'news_digest') {
+        response = await aiBrain("Give me a quick news digest.", env.DB);
+      } else if (auto.task_type === 'daily_reminder') {
+        response = `Scheduled Reminder: ${auto.name}`;
+      }
+
+      await env.DB.prepare('INSERT INTO command_history (command, response, status) VALUES (?, ?, ?)').bind(`[AUTO] ${auto.name}`, response, 'automated').run();
       await env.DB.prepare('UPDATE automations SET last_run = CURRENT_TIMESTAMP WHERE id = ?').bind(auto.id).run();
     }
   }

@@ -1,7 +1,7 @@
 /** @jsxImportSource react */
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Zap, Plus, Trash2, Clock } from 'lucide-react';
+import { Zap, Plus, Trash2, Clock, History } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const TasksInterface = () => {
@@ -72,9 +72,16 @@ const TasksInterface = () => {
               </div>
               <div>
                 <h4 className="text-xs font-bold uppercase tracking-widest">{task.name}</h4>
-                <p className="text-[10px] text-gray-500 uppercase tracking-tighter flex items-center gap-1 mt-1">
-                  <Clock size={10} /> {task.task_type} • {task.schedule}
-                </p>
+                <div className="flex flex-col gap-1 mt-1">
+                  <p className="text-[10px] text-gray-500 uppercase tracking-tighter flex items-center gap-1">
+                    <Clock size={10} /> {task.task_type} • {task.schedule}
+                  </p>
+                  {task.last_run && (
+                    <p className="text-[9px] text-blue-400/60 uppercase tracking-tighter flex items-center gap-1">
+                      <History size={9} /> Last Run: {new Date(task.last_run).toLocaleTimeString()}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
             <button onClick={() => deleteTask(task.id)} className="opacity-0 group-hover:opacity-100 text-red-400/40 hover:text-red-400 transition-all">
