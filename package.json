@@ -19,7 +19,8 @@
     "git:log": "git log --oneline"
   },
   "dependencies": {
-    "hono": "^4.11.8"
+    "hono": "^4.11.8",
+    "lucide-react": "^0.563.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "4.20250705.0",
