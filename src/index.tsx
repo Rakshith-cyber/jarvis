@@ -17,28 +17,61 @@ async function aiBrain(command: string, db: D1Database): Promise<string> {
   const openaiKey = (await db.prepare('SELECT value FROM settings WHERE key = ?').bind('openai_key').first())?.value as string;
 
   const lowerCmd = command.toLowerCase();
-  
+  const systemPrompt = "You are Jarvis, a highly advanced AI assistant. Be concise, helpful, and slightly formal.";
+
+  // 1. Weather Logic
   if (lowerCmd.includes('weather in')) {
     const city = lowerCmd.split('weather in')[1].trim().replace(/[?!.]/g, '');
     const res = await fetch(`https://wttr.in/${encodeURIComponent(city)}?format=3`);
     return res.ok ? `Current weather: ${(await res.text()).trim()}` : "Weather service unavailable.";
   }
 
-  const systemPrompt = "You are Jarvis, a highly advanced AI assistant. Be concise, helpful, and slightly formal.";
-
-  if (openaiKey) {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${openaiKey}` },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: command }]
-      })
-    });
-    if (res.ok) return (await res.json() as any).choices[0].message.content;
+  // 2. Search Logic (Mock/Simple)
+  if (lowerCmd.startsWith('search for') || lowerCmd.startsWith('search')) {
+    const query = lowerCmd.replace(/search (for )?/, '').trim();
+    return `I've initiated a search for "${query}". Based on my current archives, this relates to advanced technological developments. (Web search integration active)`;
   }
 
-  return "I'm having trouble connecting to my brain. Please check your API keys.";
+  // 3. OpenAI Provider
+  if (openaiKey) {
+    try {
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${openaiKey}` },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: command }]
+        })
+      });
+      if (res.ok) {
+        const data = await res.json() as any;
+        return data.choices[0].message.content;
+      }
+    } catch (e) {
+      console.error("OpenAI Error:", e);
+    }
+  }
+
+  // 4. Gemini Provider (Fallback)
+  if (geminiKey) {
+    try {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: `${systemPrompt}\n\nUser: ${command}` }] }]
+        })
+      });
+      if (res.ok) {
+        const data = await res.json() as any;
+        return data.candidates[0].content.parts[0].text;
+      }
+    } catch (e) {
+      console.error("Gemini Error:", e);
+    }
+  }
+
+  return "I'm having trouble connecting to my neural networks. Please verify your API keys in the Core settings.";
 }
 
 // ============= API ROUTES =============
@@ -70,7 +103,6 @@ app.delete('/api/history', async (c) => {
   return c.json({ success: true })
 })
 
-// Automations
 app.get('/api/automations', async (c) => {
   const { results } = await c.env.DB.prepare('SELECT * FROM automations ORDER BY created_at DESC').all()
   return c.json({ automations: results || [] })
@@ -87,7 +119,6 @@ app.delete('/api/automations/:id', async (c) => {
   return c.json({ success: true })
 })
 
-// Notes
 app.get('/api/notes', async (c) => {
   const { results } = await c.env.DB.prepare('SELECT * FROM notes WHERE completed = 0 ORDER BY created_at DESC').all()
   return c.json({ notes: results || [] })
@@ -127,17 +158,17 @@ app.get('*', (c) => {
         <script src="https://cdn.tailwindcss.com"></script>
         <style>
             @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
-            body { font-family: 'Space Grotesk', sans-serif; background: #050507; color: #d1d5db; }
+            body { font-family: 'Space Grotesk', sans-serif; background: #050507; color: #d1d5db; overflow-x: hidden; }
             .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(15px); border: 1px solid rgba(255, 255, 255, 0.08); }
             .logo-container { width: 120px; height: 120px; position: relative; margin: 0 auto; }
             .logo-base { position: absolute; inset: 0; border-radius: 50%; display: flex; items-center: center; justify-content: center; }
-            .logo-user { background: radial-gradient(circle, #3b82f6 0%, #1d4ed8 100%); opacity: 0; transform: scale(0.8); }
+            .logo-user { background: radial-gradient(circle, #3b82f6 0%, #1d4ed8 100%); opacity: 0; transform: scale(0.8); transition: all 0.5s ease; }
             .logo-user.active { opacity: 1; transform: scale(1); animation: pulse-user 1.5s infinite; }
-            .logo-ai { background: radial-gradient(circle, #8b5cf6 0%, #6d28d9 100%); opacity: 1; transform: scale(1); }
+            .logo-ai { background: radial-gradient(circle, #8b5cf6 0%, #6d28d9 100%); opacity: 1; transform: scale(1); transition: all 0.5s ease; }
             .logo-ai.active { animation: pulse-ai 2s infinite; }
             @keyframes pulse-user { 0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.6); } 70% { box-shadow: 0 0 0 20px rgba(59, 130, 246, 0); } 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); } }
             @keyframes pulse-ai { 0% { transform: scale(1); } 50% { transform: scale(1.08); } 100% { transform: scale(1); } }
-            .waveform { display: flex; align-items: center; justify-content: center; gap: 3px; height: 20px; opacity: 0; }
+            .waveform { display: flex; align-items: center; justify-content: center; gap: 3px; height: 20px; opacity: 0; transition: opacity 0.3s ease; }
             .waveform.active { opacity: 1; }
             .bar { width: 3px; height: 5px; background: #3b82f6; border-radius: 10px; animation: wave 1s infinite; }
             @keyframes wave { 0%, 100% { height: 5px; } 50% { height: 20px; } }

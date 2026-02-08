@@ -6,22 +6,42 @@ import SettingsInterface from './components/SettingsInterface';
 import TasksInterface from './components/TasksInterface';
 import NotesInterface from './components/NotesInterface';
 import { useJarvis } from './hooks/useJarvis';
-import { MessageSquare, Zap, StickyNote, Settings as SettingsIcon } from 'lucide-react';
+import { MessageSquare, Zap, StickyNote, Settings as SettingsIcon, Volume2, VolumeX } from 'lucide-react';
 
 const App = () => {
   const [activeTab, setActiveTab] = useState('chat');
-  const { messages, sendCommand, isProcessing, setMessages } = useJarvis();
+  const { 
+    messages, 
+    sendCommand, 
+    isProcessing, 
+    isListening, 
+    voiceEnabled, 
+    setVoiceEnabled, 
+    setMessages 
+  } = useJarvis();
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-6xl">
-      <SystemDashboard />
+      <SystemDashboard isListening={isListening} voiceEnabled={voiceEnabled} />
 
-      <nav className="flex justify-center mb-8 space-x-3">
-        <TabButton id="chat" active={activeTab} onClick={setActiveTab} icon={<MessageSquare size={16} />} label="Chat" />
-        <TabButton id="tasks" active={activeTab} onClick={setActiveTab} icon={<Zap size={16} />} label="Tasks" />
-        <TabButton id="notes" active={activeTab} onClick={setActiveTab} icon={<StickyNote size={16} />} label="Notes" />
-        <TabButton id="settings" active={activeTab} onClick={setActiveTab} icon={<SettingsIcon size={16} />} label="Core" />
-      </nav>
+      <div className="flex flex-col md:flex-row items-center justify-between mb-8 gap-4">
+        <nav className="flex space-x-3">
+          <TabButton id="chat" active={activeTab} onClick={setActiveTab} icon={<MessageSquare size={16} />} label="Chat" />
+          <TabButton id="tasks" active={activeTab} onClick={setActiveTab} icon={<Zap size={16} />} label="Tasks" />
+          <TabButton id="notes" active={activeTab} onClick={setActiveTab} icon={<StickyNote size={16} />} label="Notes" />
+          <TabButton id="settings" active={activeTab} onClick={setActiveTab} icon={<SettingsIcon size={16} />} label="Core" />
+        </nav>
+
+        <button 
+          onClick={() => setVoiceEnabled(!voiceEnabled)}
+          className={`px-4 py-2 rounded-xl glass text-[10px] font-bold uppercase tracking-widest transition-all flex items-center gap-2 ${
+            voiceEnabled ? 'text-blue-400 border-blue-500/30' : 'text-gray-500'
+          }`}
+        >
+          {voiceEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />}
+          Voice Output: {voiceEnabled ? 'ON' : 'OFF'}
+        </button>
+      </div>
 
       <main className="glass rounded-3xl p-6 shadow-2xl border-white/5 min-h-[400px]">
         {activeTab === 'chat' && (

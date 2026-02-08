@@ -5,13 +5,15 @@ import toast from 'react-hot-toast';
 export const useJarvis = () => {
   const [isListening, setIsListening] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [voiceEnabled, setVoiceEnabled] = useState(true);
   const [messages, setMessages] = useState<any[]>([]);
   const [recognition, setRecognition] = useState<any>(null);
 
-  const speak = (text: string) => {
+  const speak = useCallback((text: string) => {
+    if (!voiceEnabled) return;
     const utterance = new SpeechSynthesisUtterance(text);
     window.speechSynthesis.speak(utterance);
-  };
+  }, [voiceEnabled]);
 
   const sendCommand = useCallback(async (command: string) => {
     if (!command.trim()) return;
@@ -29,7 +31,7 @@ export const useJarvis = () => {
     } finally {
       setIsProcessing(false);
     }
-  }, []);
+  }, [speak]);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && ('webkitSpeechRecognition' in window)) {
@@ -56,7 +58,7 @@ export const useJarvis = () => {
       rec.start();
       setRecognition(rec);
     }
-  }, [isListening, sendCommand]);
+  }, [isListening, sendCommand, speak]);
 
   const loadHistory = async () => {
     try {
@@ -73,5 +75,13 @@ export const useJarvis = () => {
     loadHistory();
   }, []);
 
-  return { isListening, isProcessing, messages, sendCommand, setMessages };
+  return { 
+    isListening, 
+    isProcessing, 
+    voiceEnabled, 
+    setVoiceEnabled, 
+    messages, 
+    sendCommand, 
+    setMessages 
+  };
 };

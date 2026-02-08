@@ -1,8 +1,8 @@
 /** @jsxImportSource react */
 import React, { useState, useEffect } from 'react';
-import { Mic, BrainCircuit } from 'lucide-react';
+import { Mic, BrainCircuit, Volume2, VolumeX } from 'lucide-react';
 
-const SystemDashboard = () => {
+const SystemDashboard = ({ isListening, voiceEnabled }: any) => {
   const [stats, setStats] = useState({ cpu: 12, mem: 4.2, net: 84, uptime: '00:00:00' });
   const [startTime] = useState(Date.now());
 
@@ -43,18 +43,23 @@ const SystemDashboard = () => {
 
       <div className="lg:col-span-2 text-center">
         <div className="logo-container mb-4">
-          <div id="logo-user" className="logo-base logo-user flex items-center justify-center">
+          <div className={`logo-base logo-user flex items-center justify-center ${isListening ? 'active' : ''}`}>
             <Mic className="w-10 h-10 text-white" />
           </div>
-          <div id="logo-ai" className="logo-base logo-ai active flex items-center justify-center">
+          <div className={`logo-base logo-ai flex items-center justify-center ${!isListening ? 'active' : ''}`}>
             <BrainCircuit className="w-10 h-10 text-white" />
           </div>
         </div>
         <h1 className="text-4xl font-black tracking-tighter bg-gradient-to-b from-white to-gray-500 bg-clip-text text-transparent">JARVIS</h1>
-        <div id="waveform" className="waveform mt-2">
+        <div className={`waveform mt-2 ${isListening ? 'active' : ''}`}>
           {[...Array(5)].map((_, i) => <div key={i} className="bar"></div>)}
         </div>
-        <p className="text-blue-400/40 text-[10px] uppercase tracking-[0.3em] mt-2">Neural Link Standby</p>
+        <div className="flex items-center justify-center gap-2 mt-2">
+          <p className="text-blue-400/40 text-[10px] uppercase tracking-[0.3em]">
+            {isListening ? 'Neural Link Active' : 'Neural Link Standby'}
+          </p>
+          {voiceEnabled ? <Volume2 size={10} className="text-blue-400/40" /> : <VolumeX size={10} className="text-red-400/40" />}
+        </div>
       </div>
 
       <div className="lg:col-span-1 flex flex-col justify-center">
