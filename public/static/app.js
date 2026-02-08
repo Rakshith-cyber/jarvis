@@ -113,6 +113,12 @@ function addMessage(type, content) {
     container.scrollTop = container.scrollHeight;
 }
 
+async function clearHistory() {
+    if (!confirm("Clear all conversation history?")) return;
+    await axios.delete('/api/history');
+    document.getElementById('chat-container').innerHTML = '';
+}
+
 function speak(text) {
     if (!voiceOutputEnabled) return;
     const utterance = new SpeechSynthesisUtterance(text);
@@ -125,6 +131,7 @@ async function loadHistory() {
     try {
         const res = await axios.get('/api/history');
         const history = res.data.history.reverse();
+        document.getElementById('chat-container').innerHTML = '';
         history.forEach(item => {
             addMessage('user', item.command);
             addMessage('jarvis', item.response);
@@ -137,13 +144,18 @@ async function loadAutomations() {
         const res = await axios.get('/api/automations');
         const list = document.getElementById('automations-list');
         list.innerHTML = res.data.automations.map(a => `
-            <div class="p-4 glass rounded-xl flex justify-between items-center">
+            <div class="p-4 glass rounded-xl flex justify-between items-center group">
                 <div>
                     <h4 class="font-bold">${a.name}</h4>
                     <p class="text-xs text-gray-400">${a.task_type} @ ${a.schedule}</p>
                 </div>
-                <div class="w-10 h-5 bg-blue-600 rounded-full relative cursor-pointer">
-                    <div class="absolute right-1 top-1 bottom-1 w-3 bg-white rounded-full"></div>
+                <div class="flex items-center space-x-3">
+                    <button onclick="deleteAutomation(${a.id})" class="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 transition-all">
+                        <i class="fas fa-trash-can"></i>
+                    </button>
+                    <div class="w-10 h-5 bg-blue-600 rounded-full relative cursor-pointer">
+                        <div class="absolute right-1 top-1 bottom-1 w-3 bg-white rounded-full"></div>
+                    </div>
                 </div>
             </div>
         `).join('') || '<p class="text-gray-500 text-center py-4">No active automations</p>';
@@ -159,12 +171,20 @@ async function createAutomation() {
     loadAutomations();
 }
 
+async function deleteAutomation(id) {
+    await axios.delete(\`/api/automations/\${id}\`);
+    loadAutomations();
+}
+
 async function loadNotes() {
     try {
         const res = await axios.get('/api/notes');
         const list = document.getElementById('notes-list');
         list.innerHTML = res.data.notes.map(n => `
-            <div class="p-4 glass rounded-xl border-l-4 border-purple-500">
+            <div class="p-4 glass rounded-xl border-l-4 border-purple-500 relative group">
+                <button onclick="deleteNote(${n.id})" class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-400 transition-all">
+                    <i class="fas fa-times"></i>
+                </button>
                 <h4 class="font-bold mb-1">${n.title}</h4>
                 <p class="text-sm text-gray-400">${n.content}</p>
             </div>
@@ -177,6 +197,11 @@ async function createNote() {
     const content = document.getElementById('note-content').value;
     if (!title) return;
     await axios.post('/api/notes', { title, content });
+    loadNotes();
+}
+
+async function deleteNote(id) {
+    await axios.delete(\`/api/notes/\${id}\`);
     loadNotes();
 }
 

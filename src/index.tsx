@@ -11,20 +11,37 @@ const app = new Hono<{ Bindings: Bindings }>()
 app.use('/api/*', cors())
 app.use('/static/*', serveStatic({ root: './public' }))
 
+// ============= TOOLS =============
+async function getWeather(city: string) {
+  try {
+    const res = await fetch(`https://wttr.in/${encodeURIComponent(city)}?format=3`);
+    if (res.ok) {
+      const text = await res.text();
+      return `Current weather: ${text.trim()}`;
+    }
+    return "I couldn't reach the weather service right now.";
+  } catch (e) {
+    return "Weather service is currently unavailable.";
+  }
+}
+
 // ============= AI BRAIN =============
 async function aiBrain(command: string, db: D1Database): Promise<string> {
   const geminiKey = (await db.prepare('SELECT value FROM settings WHERE key = ?').bind('gemini_key').first())?.value as string;
   const openaiKey = (await db.prepare('SELECT value FROM settings WHERE key = ?').bind('openai_key').first())?.value as string;
 
-  // Simple Tool Detection
   const lowerCmd = command.toLowerCase();
+  
+  // Tool: Weather
   if (lowerCmd.includes('weather in')) {
-    const city = lowerCmd.split('weather in')[1].trim();
-    return `I'll check the weather for ${city}. (Weather API integration pending)`;
+    const city = lowerCmd.split('weather in')[1].trim().replace(/[?!.]/g, '');
+    return await getWeather(city);
   }
+
+  // Tool: Search
   if (lowerCmd.includes('search for')) {
     const query = lowerCmd.split('search for')[1].trim();
-    return `Searching the web for "${query}"... (Search API integration pending)`;
+    return `I've initiated a search for "${query}". You can find more details at: https://duckduckgo.com/?q=${encodeURIComponent(query)}`;
   }
 
   const systemPrompt = "You are Jarvis, a highly advanced AI assistant. Be concise, helpful, and slightly formal but friendly.";
@@ -90,8 +107,13 @@ app.post('/api/command', async (c) => {
 })
 
 app.get('/api/history', async (c) => {
-  const { results } = await c.env.DB.prepare('SELECT * FROM command_history ORDER BY timestamp DESC LIMIT 20').all()
+  const { results } = await c.env.DB.prepare('SELECT * FROM command_history ORDER BY timestamp DESC LIMIT 50').all()
   return c.json({ history: results || [] })
+})
+
+app.delete('/api/history', async (c) => {
+  await c.env.DB.prepare('DELETE FROM command_history').run()
+  return c.json({ success: true })
 })
 
 app.get('/api/automations', async (c) => {
@@ -105,6 +127,12 @@ app.post('/api/automations', async (c) => {
   return c.json({ success: true })
 })
 
+app.delete('/api/automations/:id', async (c) => {
+  const id = c.req.param('id')
+  await c.env.DB.prepare('DELETE FROM automations WHERE id = ?').bind(id).run()
+  return c.json({ success: true })
+})
+
 app.get('/api/notes', async (c) => {
   const { results } = await c.env.DB.prepare('SELECT * FROM notes WHERE completed = 0 ORDER BY created_at DESC').all()
   return c.json({ notes: results || [] })
@@ -113,6 +141,12 @@ app.get('/api/notes', async (c) => {
 app.post('/api/notes', async (c) => {
   const { title, content } = await c.req.json()
   await c.env.DB.prepare('INSERT INTO notes (title, content, completed) VALUES (?, ?, 0)').bind(title, content).run()
+  return c.json({ success: true })
+})
+
+app.delete('/api/notes/:id', async (c) => {
+  const id = c.req.param('id')
+  await c.env.DB.prepare('DELETE FROM notes WHERE id = ?').bind(id).run()
   return c.json({ success: true })
 })
 
@@ -138,6 +172,9 @@ app.get('/', (c) => {
             @keyframes pulse-ai { 0% { transform: scale(1); filter: brightness(1); } 50% { transform: scale(1.05); filter: brightness(1.2); } 100% { transform: scale(1); filter: brightness(1); } }
             #chat-container { height: 450px; overflow-y: auto; scroll-behavior: smooth; }
             .tab-btn.active { background: rgba(59, 130, 246, 0.2); border-color: rgba(59, 130, 246, 0.5); }
+            ::-webkit-scrollbar { width: 6px; }
+            ::-webkit-scrollbar-track { background: transparent; }
+            ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
         </style>
     </head>
     <body class="bg-[#0a0a0c] text-gray-200 min-h-screen font-sans">
@@ -162,6 +199,10 @@ app.get('/', (c) => {
                 <!-- Chat Tab -->
                 <div id="content-chat" class="tab-content">
                     <div class="glass rounded-2xl p-4 shadow-2xl">
+                        <div class="flex justify-between items-center mb-4 px-2">
+                            <h3 class="text-sm font-bold text-gray-500 uppercase tracking-widest">Conversation</h3>
+                            <button onclick="clearHistory()" class="text-xs text-red-400/60 hover:text-red-400 transition-colors">Clear History</button>
+                        </div>
                         <div id="chat-container" class="space-y-4 mb-4 pr-2"></div>
                         <div class="relative">
                             <input type="text" id="command-input" placeholder="Ask Jarvis anything..." class="w-full pl-5 pr-14 py-4 bg-white/5 rounded-xl border border-white/10 outline-none focus:border-blue-500/50 transition-all">
